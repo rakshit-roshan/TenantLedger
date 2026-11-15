@@ -2,7 +2,7 @@
 
 declare const __API_BASE_URL__: string | undefined;
 
-const BASE_URL = typeof __API_BASE_URL__ !== 'undefined' ? __API_BASE_URL__ : (import.meta.env.VITE_API_BASE_URL || '/api/v1');
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || (typeof __API_BASE_URL__ !== 'undefined' ? __API_BASE_URL__ : '/api/v1');
 
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('gk_jwt_token');
