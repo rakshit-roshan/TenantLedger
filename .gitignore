@@ -40,15 +40,6 @@ backend/target/
 *.tar.gz
 *.rar
 
-# Android build outputs & Gradle caches
-.gradle/
-android/.gradle/
-android/build/
-android/app/build/
-*.ap_
-*.aab
-!build-output/Gharkhata.apk
-
 # Maven error dumps & crash logs
 hs_err_pid*
 replay_pid*
