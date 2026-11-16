@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Button';
-import { User, Building, CreditCard, UploadCloud, CheckCircle2, Shield } from 'lucide-react';
+import { User, Building, CreditCard, UploadCloud } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const { currentUser, currentOrg, updateOwnerProfile, updateOrgDetails } = useApp();
@@ -388,17 +388,6 @@ export const SettingsPage: React.FC = () => {
             </Button>
           </div>
         </form>
-      </div>
-
-      {/* Security & Multi-Tenancy Compliance */}
-      <div className="p-4 bg-ground rounded-[12px] border border-line flex items-start gap-3">
-        <Shield size={20} className="text-paid flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-muted-text space-y-1">
-          <span className="font-bold text-ink">Multi-Tenant Row-Level Database Isolation Active</span>
-          <p>
-            Organization data is partitioned with deterministic MySQL <code className="text-terracotta">app_org()</code> views and Hibernate 6 <code className="text-terracotta">@TenantId</code>. No other organization can access your tenant leases, bank accounts, or KYC archives.
-          </p>
-        </div>
       </div>
     </div>
   );
