@@ -16,6 +16,9 @@ import {
   FileCheck,
   ShieldCheck,
   Trash2,
+  Building2,
+  Plus,
+  AlertCircle,
 } from 'lucide-react';
 
 interface AddTenantWizardModalProps {
@@ -29,7 +32,7 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
   onClose,
   preselectedUnitId,
 }) => {
-  const { units, buildings, onboardTenantAndAssignUnit, showToast } = useApp();
+  const { units, buildings, currentOrg, addBuilding, addUnit, onboardTenantAndAssignUnit, showToast } = useApp();
 
   const [step, setStep] = useState<number>(1);
 
@@ -48,6 +51,21 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
   const [selectedUnitId, setSelectedUnitId] = useState<string>(
     preselectedUnitId || (vacantUnits[0]?.id ?? '')
   );
+
+  // On-the-fly progressive setup states
+  const [showInlineAddBuilding, setShowInlineAddBuilding] = useState(false);
+  const [inlineBName, setInlineBName] = useState('');
+  const [inlineBFloors, setInlineBFloors] = useState<number>(3);
+  const [isCreatingBuilding, setIsCreatingBuilding] = useState(false);
+
+  const [showInlineAddUnit, setShowInlineAddUnit] = useState(false);
+  const [inlineBuildingId, setInlineBuildingId] = useState<string>('');
+  const [inlineUNumber, setInlineUNumber] = useState('');
+  const [inlineUFloor, setInlineUFloor] = useState<number>(1);
+  const [inlineUType, setInlineUType] = useState<'1RK' | '1BHK' | '2BHK' | '3BHK' | 'Commercial' | 'Shop'>('2BHK');
+  const [inlineURent, setInlineURent] = useState<number>(20000);
+  const [inlineUDeposit, setInlineUDeposit] = useState<number>(60000);
+  const [isCreatingUnit, setIsCreatingUnit] = useState(false);
 
   // Step 3: Commercials
   const [rentPaise, setRentPaise] = useState<number>(2500000);
@@ -68,13 +86,75 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
   const [panNumber, setPanNumber] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; type: string }>>([]);
   const [policeVerification, setPoliceVerification] = useState<'VERIFIED' | 'PENDING'>('VERIFIED');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Update rent defaults when unit changes
   useEffect(() => {
-    if (preselectedUnitId) {
-      setSelectedUnitId(preselectedUnitId);
+    if (buildings.length > 0 && !inlineBuildingId) {
+      setInlineBuildingId(buildings[0].id);
     }
-  }, [preselectedUnitId]);
+  }, [buildings, inlineBuildingId]);
+
+  useEffect(() => {
+    if (!selectedUnitId && vacantUnits.length > 0) {
+      setSelectedUnitId(vacantUnits[0].id);
+    }
+  }, [vacantUnits, selectedUnitId]);
+
+  const handleCreateInlineBuilding = async () => {
+    if (!inlineBName.trim()) {
+      showToast('Building name is required', 'error');
+      return;
+    }
+    setIsCreatingBuilding(true);
+    const created = await addBuilding({
+      name: inlineBName.trim(),
+      totalFloors: inlineBFloors,
+      address: currentOrg.address || 'Main Road',
+      city: currentOrg.city || 'Pune',
+      state: currentOrg.state || 'Maharashtra',
+      pincode: currentOrg.pincode || '411005',
+    });
+    setIsCreatingBuilding(false);
+    if (created) {
+      setInlineBuildingId(created.id);
+      setInlineBName('');
+      setShowInlineAddBuilding(false);
+      setShowInlineAddUnit(true);
+    }
+  };
+
+  const handleCreateInlineUnit = async () => {
+    if (!inlineUNumber.trim()) {
+      showToast('Unit number is required', 'error');
+      return;
+    }
+    const targetBuilding = buildings.find((b) => b.id === inlineBuildingId) || buildings[0];
+    if (!targetBuilding) {
+      showToast('Please select or create a building first', 'error');
+      return;
+    }
+    setIsCreatingUnit(true);
+    await addUnit({
+      organizationId: currentOrg.id,
+      buildingId: targetBuilding.id,
+      buildingName: targetBuilding.name,
+      floorId: `floor-${inlineUFloor}`,
+      floorNumber: inlineUFloor,
+      unitNumber: inlineUNumber.trim(),
+      type: inlineUType,
+      areaSqft: 600,
+      baseRentPaise: inlineURent * 100,
+      maintenancePaise: 250000,
+      depositPaise: inlineUDeposit * 100,
+      status: 'VACANT',
+      paymentStatus: 'VACANT',
+    });
+    setIsCreatingUnit(false);
+    setShowInlineAddUnit(false);
+    setRentPaise(inlineURent * 100);
+    setDepositPaise(inlineUDeposit * 100);
+    setInlineUNumber('');
+  };
 
   useEffect(() => {
     const u = units.find((item) => item.id === selectedUnitId);
@@ -107,45 +187,50 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (!name.trim() || !phone.trim() || !selectedUnitId) {
       showToast('Please fill required tenant details and select a unit', 'error');
       return;
     }
 
-    onboardTenantAndAssignUnit({
-      name,
-      email,
-      phone,
-      occupation: occupation || 'Professional',
-      company,
-      emergencyName: emergencyName || 'Relative',
-      emergencyPhone: emergencyPhone || '+91 98000 00000',
-      emergencyRelation,
-      unitId: selectedUnitId,
-      startDate: new Date(startDate).toISOString(),
-      endDate: new Date(endDate).toISOString(),
-      rentPaise,
-      maintenancePaise,
-      depositPaise,
-      dueDay,
-      graceDays,
-      yearlyIncreasePercent,
-      aadhaarNumber: aadhaarNumber || '4921',
-      panNumber: panNumber || '1082K',
-      aadhaarFileName: uploadedFiles[0]?.name,
-      policeVerification,
-    });
+    setIsSubmitting(true);
+    try {
+      await onboardTenantAndAssignUnit({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        occupation: occupation || 'Professional',
+        company,
+        emergencyName: emergencyName || 'Relative',
+        emergencyPhone: emergencyPhone || '+91 98000 00000',
+        emergencyRelation,
+        unitId: selectedUnitId,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        rentPaise,
+        maintenancePaise,
+        depositPaise,
+        dueDay,
+        graceDays,
+        yearlyIncreasePercent,
+        aadhaarNumber: aadhaarNumber || '4921',
+        panNumber: panNumber || '1082K',
+        aadhaarFileName: uploadedFiles[0]?.name,
+        policeVerification,
+      });
 
-    onClose();
-    // Reset state
-    setStep(1);
-    setName('');
-    setEmail('');
-    setPhone('+91 ');
-    setAadhaarNumber('');
-    setPanNumber('');
-    setUploadedFiles([]);
+      onClose();
+      // Reset state
+      setStep(1);
+      setName('');
+      setEmail('');
+      setPhone('+91 ');
+      setAadhaarNumber('');
+      setPanNumber('');
+      setUploadedFiles([]);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -314,45 +399,273 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
         {/* STEP 2: Assign Unit & Move-in */}
         {step === 2 && (
           <div className="space-y-4">
-            <h4 className="font-serif text-lg text-ink flex items-center gap-2">
-              <Home size={18} className="text-terracotta" />
-              <span>Select Vacant Unit to Assign</span>
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-serif text-lg text-ink flex items-center gap-2">
+                <Home size={18} className="text-terracotta" />
+                <span>Assign House / Unit to Tenant</span>
+              </h4>
 
-            <div>
-              <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1.5">
-                Available Vacant Units <span className="text-terracotta">*</span>
-              </label>
-              <select
-                value={selectedUnitId}
-                onChange={(e) => setSelectedUnitId(e.target.value)}
-                className="w-full h-[44px] px-3 rounded-[10px] border border-line bg-surface text-ink text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-terracotta"
-              >
-                {vacantUnits.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    Unit {u.unitNumber} - {u.buildingName} ({u.type}, {u.areaSqft} sq.ft) -{' '}
-                    {formatRupees(u.baseRentPaise)}/mo
-                  </option>
-                ))}
-              </select>
+              {/* Quick actions to add building or unit anytime */}
+              {buildings.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInlineAddBuilding(!showInlineAddBuilding);
+                      setShowInlineAddUnit(false);
+                    }}
+                    className="text-xs text-terracotta hover:underline font-semibold flex items-center gap-1"
+                  >
+                    <Plus size={13} /> {showInlineAddBuilding ? 'Close Building Form' : 'New Building'}
+                  </button>
+                  <span className="text-line">•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInlineAddUnit(!showInlineAddUnit);
+                      setShowInlineAddBuilding(false);
+                    }}
+                    className="text-xs text-terracotta hover:underline font-semibold flex items-center gap-1"
+                  >
+                    <Plus size={13} /> {showInlineAddUnit ? 'Close Unit Form' : 'New Unit'}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Selected Unit Snapshot */}
-            {activeUnit && (
-              <div className="p-4 bg-ground rounded-[12px] border border-line space-y-2 text-xs">
-                <div className="font-bold text-sm text-ink flex items-center justify-between">
-                  <span>Unit {activeUnit.unitNumber} ({activeUnit.buildingName})</span>
-                  <span className="px-2 py-0.5 rounded bg-paid/15 text-paid font-semibold">Ready to Lease</span>
+            {/* CASE 1: No buildings exist yet OR user clicked + New Building */}
+            {(buildings.length === 0 || showInlineAddBuilding) && (
+              <div className="p-4 sm:p-5 bg-ground rounded-[14px] border-2 border-dashed border-terracotta/40 space-y-4 animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-terracotta/15 text-terracotta flex items-center justify-center flex-shrink-0">
+                    <Building2 size={20} />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-sm text-ink">
+                      {buildings.length === 0 ? 'Step A: Add Your First Building' : 'Add New Building to Portfolio'}
+                    </h5>
+                    <p className="text-xs text-muted-text">
+                      {buildings.length === 0
+                        ? "You don't have any properties set up yet. Create a building to allocate units to this tenant."
+                        : 'Create another building in your property ledger.'}
+                    </p>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 pt-1 text-muted-text">
-                  <div>Floor: <strong className="text-ink">{activeUnit.floorNumber}</strong></div>
-                  <div>Type: <strong className="text-ink">{activeUnit.type}</strong></div>
-                  <div>Area: <strong className="text-ink">{activeUnit.areaSqft} sq.ft</strong></div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Building Name <span className="text-terracotta">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={inlineBName}
+                      onChange={(e) => setInlineBName(e.target.value)}
+                      placeholder="e.g. Ganesh Niwas, Shivaji Heights"
+                      className="w-full h-[42px] px-3 rounded-[8px] border border-line bg-surface text-sm text-ink font-semibold focus:outline-none focus:ring-2 focus:ring-terracotta"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Total Floors
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={inlineBFloors}
+                      onChange={(e) => setInlineBFloors(parseInt(e.target.value, 10) || 1)}
+                      className="w-full h-[42px] px-3 rounded-[8px] border border-line bg-surface text-sm text-ink font-semibold focus:outline-none focus:ring-2 focus:ring-terracotta"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={isCreatingBuilding || !inlineBName.trim()}
+                    onClick={handleCreateInlineBuilding}
+                  >
+                    {isCreatingBuilding ? 'Creating Building...' : '+ Create Building & Continue to Unit'}
+                  </Button>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* CASE 2: Building exists but NO vacant units exist OR user clicked + New Unit */}
+            {buildings.length > 0 && !showInlineAddBuilding && (vacantUnits.length === 0 || showInlineAddUnit) && (
+              <div className="p-4 sm:p-5 bg-ground rounded-[14px] border-2 border-dashed border-terracotta/40 space-y-4 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-paid/15 text-paid flex items-center justify-center flex-shrink-0">
+                      <Home size={20} />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm text-ink">
+                        {vacantUnits.length === 0
+                          ? `Step B: Add First Unit in ${buildings[0]?.name}`
+                          : 'Add New Unit on-the-Fly'}
+                      </h5>
+                      <p className="text-xs text-muted-text">
+                        Create flat/unit details and it will immediately be allocated to this tenant.
+                      </p>
+                    </div>
+                  </div>
+                  {vacantUnits.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowInlineAddUnit(false)}
+                      className="text-xs text-muted-text hover:text-ink underline"
+                    >
+                      Choose Existing Unit
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Building
+                    </label>
+                    <select
+                      value={inlineBuildingId}
+                      onChange={(e) => setInlineBuildingId(e.target.value)}
+                      className="w-full h-[42px] px-2.5 rounded-[8px] border border-line bg-surface text-sm text-ink font-semibold"
+                    >
+                      {buildings.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Unit / Flat # <span className="text-terracotta">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={inlineUNumber}
+                      onChange={(e) => setInlineUNumber(e.target.value)}
+                      placeholder="e.g. 101, 202, Flat B"
+                      className="w-full h-[42px] px-3 rounded-[8px] border border-line bg-surface text-sm text-ink font-bold focus:outline-none focus:ring-2 focus:ring-terracotta"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Floor Number
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={inlineUFloor}
+                      onChange={(e) => setInlineUFloor(parseInt(e.target.value, 10) || 0)}
+                      className="w-full h-[42px] px-3 rounded-[8px] border border-line bg-surface text-sm text-ink font-semibold"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Unit Type
+                    </label>
+                    <select
+                      value={inlineUType}
+                      onChange={(e) => setInlineUType(e.target.value as any)}
+                      className="w-full h-[42px] px-2.5 rounded-[8px] border border-line bg-surface text-sm text-ink font-semibold"
+                    >
+                      <option value="1RK">1 RK</option>
+                      <option value="1BHK">1 BHK</option>
+                      <option value="2BHK">2 BHK</option>
+                      <option value="3BHK">3 BHK</option>
+                      <option value="Commercial">Commercial Shop</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Expected Rent (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="500"
+                      value={inlineURent}
+                      onChange={(e) => setInlineURent(parseFloat(e.target.value) || 0)}
+                      className="w-full h-[42px] px-3 rounded-[8px] border border-line bg-surface text-sm text-ink font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1">
+                      Deposit (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="1000"
+                      value={inlineUDeposit}
+                      onChange={(e) => setInlineUDeposit(parseFloat(e.target.value) || 0)}
+                      className="w-full h-[42px] px-3 rounded-[8px] border border-line bg-surface text-sm text-ink font-semibold"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={isCreatingUnit || !inlineUNumber.trim()}
+                    onClick={handleCreateInlineUnit}
+                  >
+                    {isCreatingUnit ? 'Creating Unit...' : '+ Create Unit & Select for Tenant'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* CASE 3: Normal selection when vacant units exist */}
+            {vacantUnits.length > 0 && !showInlineAddBuilding && !showInlineAddUnit && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1.5">
+                    Available Vacant Units <span className="text-terracotta">*</span>
+                  </label>
+                  <select
+                    value={selectedUnitId}
+                    onChange={(e) => setSelectedUnitId(e.target.value)}
+                    className="w-full h-[44px] px-3 rounded-[10px] border border-line bg-surface text-ink text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  >
+                    {vacantUnits.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        Unit {u.unitNumber} - {u.buildingName} ({u.type}, {u.areaSqft} sq.ft) -{' '}
+                        {formatRupees(u.baseRentPaise)}/mo
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Selected Unit Snapshot */}
+                {activeUnit && (
+                  <div className="p-4 bg-ground rounded-[12px] border border-line space-y-2 text-xs">
+                    <div className="font-bold text-sm text-ink flex items-center justify-between">
+                      <span>Unit {activeUnit.unitNumber} ({activeUnit.buildingName})</span>
+                      <span className="px-2 py-0.5 rounded bg-paid/15 text-paid font-semibold">Ready to Lease</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 pt-1 text-muted-text">
+                      <div>Floor: <strong className="text-ink">{activeUnit.floorNumber}</strong></div>
+                      <div>Type: <strong className="text-ink">{activeUnit.type}</strong></div>
+                      <div>Area: <strong className="text-ink">{activeUnit.areaSqft} sq.ft</strong></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Agreement Dates (Always visible when a unit is or can be selected) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1.5">
                   Agreement Start Date
@@ -596,10 +909,11 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
           ) : (
             <Button
               variant="primary"
+              disabled={isSubmitting}
               onClick={handleFinish}
               icon={<CheckCircle2 size={16} />}
             >
-              Confirm & Assign Unit
+              {isSubmitting ? 'Saving to Database...' : 'Confirm & Assign Unit'}
             </Button>
           )}
         </div>

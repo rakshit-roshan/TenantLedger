@@ -97,10 +97,22 @@ interface AppContextType {
   expenses: ExpenseRecord[];
 
   // Real-world Business Mutations (Directly updating MySQL via Spring Boot)
+  addBuilding: (building: {
+    name: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    totalFloors: number;
+  }) => Promise<Building | null>;
+  updateBuilding: (id: string, building: Partial<Building>) => Promise<void>;
+  deleteBuilding: (id: string) => Promise<void>;
   onboardTenantAndAssignUnit: (data: NewTenantOnboardingData) => Promise<void>;
   recordPayment: (payment: Omit<PaymentReceipt, 'id' | 'receiptNumber'>) => Promise<void>;
   reversePayment: (receiptId: string, reason: string) => Promise<void>;
   addUnit: (unit: Omit<Unit, 'id'>) => Promise<void>;
+  updateUnit: (id: string, unit: Partial<Unit>) => Promise<void>;
+  deleteUnit: (id: string) => Promise<void>;
   bulkAddUnits: (newUnits: Omit<Unit, 'id'>[]) => Promise<void>;
   copyFloorUnits: (sourceFloorNumber: number, targetFloorNumber: number, buildingId: string) => Promise<void>;
   sendReminderNow: (unitId: string, channel: 'WHATSAPP' | 'SMS' | 'EMAIL' | 'VOICE') => Promise<void>;
@@ -152,15 +164,36 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLang] = useState<Language>('en');
 
-  // Auth State
+  // Auth State - Persisted across page refreshes
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!localStorage.getItem('gk_jwt_token'));
-  const [currentUser, setCurrentUser] = useState<User>(defaultUser);
-  const [currentRole, setCurrentRole] = useState<UserRole>('OWNER');
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    try {
+      const saved = localStorage.getItem('gk_user');
+      return saved ? JSON.parse(saved) : defaultUser;
+    } catch {
+      return defaultUser;
+    }
+  });
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    try {
+      const saved = localStorage.getItem('gk_role');
+      return (saved as UserRole) || 'OWNER';
+    } catch {
+      return 'OWNER';
+    }
+  });
 
-  // Tenant Organization
-  const [currentOrg, setCurrentOrg] = useState<Organization>(defaultOrg);
-  const [allOrgs, setAllOrgs] = useState<Organization[]>([defaultOrg]);
-  const [allUsers, setAllUsers] = useState<User[]>([defaultUser]);
+  // Tenant Organization - Persisted across page refreshes
+  const [currentOrg, setCurrentOrg] = useState<Organization>(() => {
+    try {
+      const saved = localStorage.getItem('gk_org');
+      return saved ? JSON.parse(saved) : defaultOrg;
+    } catch {
+      return defaultOrg;
+    }
+  });
+  const [allOrgs, setAllOrgs] = useState<Organization[]>(() => [currentOrg]);
+  const [allUsers, setAllUsers] = useState<User[]>(() => [currentUser]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('ALL');
 
   // Live Data Store from MySQL
@@ -438,25 +471,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       api.getMe()
         .then((res) => {
           if (res && res.user && res.organization) {
-            setCurrentUser({
+            const userObj: User = {
               id: res.user.id,
               name: res.user.name,
+              firstName: res.user.firstName,
+              lastName: res.user.lastName,
               email: res.user.email,
               phone: res.user.phone,
               avatar: res.user.avatarUrl,
-            });
+            };
+            setCurrentUser(userObj);
+            localStorage.setItem('gk_user', JSON.stringify(userObj));
+
             setCurrentOrg(res.organization);
             setAllOrgs([res.organization]);
+            localStorage.setItem('gk_org', JSON.stringify(res.organization));
+
             if (res.role) {
               setCurrentRole(res.role as UserRole);
+              localStorage.setItem('gk_role', res.role);
             }
           }
           return refreshAllData();
         })
-        .catch((err) => {
-          console.warn('Session expired or invalid, please sign in:', err);
-          localStorage.removeItem('gk_jwt_token');
-          setIsAuthenticated(false);
+        .catch((err: any) => {
+          console.warn('Session check warning:', err);
+          // ONLY clear session if server explicitly returns 401 Unauthorized or 403 Forbidden!
+          // Network lag, cold start, or temporary offline must NOT log out the user!
+          if (err?.status === 401 || err?.status === 403) {
+            localStorage.removeItem('gk_jwt_token');
+            localStorage.removeItem('gk_user');
+            localStorage.removeItem('gk_org');
+            localStorage.removeItem('gk_role');
+            setIsAuthenticated(false);
+          } else {
+            // Keep user logged in and attempt to refresh live data
+            refreshAllData().catch(() => {});
+          }
         });
     }
   }, [isAuthenticated, refreshAllData]);
@@ -466,6 +517,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(user);
     setCurrentRole(role);
     setIsAuthenticated(true);
+    localStorage.setItem('gk_user', JSON.stringify(user));
+    localStorage.setItem('gk_role', role);
     showToast(`Welcome back, ${user.name}! Logged in as ${role}.`, 'success');
   };
 
@@ -475,7 +528,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res && res.token) {
         localStorage.setItem('gk_jwt_token', res.token);
         if (res.user) {
-          setCurrentUser({
+          const userObj: User = {
             id: res.user.id,
             name: res.user.name,
             firstName: res.user.firstName,
@@ -483,14 +536,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             email: res.user.email,
             phone: res.user.phone,
             avatar: res.user.avatarUrl,
-          });
+          };
+          setCurrentUser(userObj);
+          localStorage.setItem('gk_user', JSON.stringify(userObj));
         }
         if (res.organization) {
           setCurrentOrg(res.organization);
           setAllOrgs([res.organization]);
+          localStorage.setItem('gk_org', JSON.stringify(res.organization));
         }
         if (res.role) {
           setCurrentRole(res.role as UserRole);
+          localStorage.setItem('gk_role', res.role);
         }
         setIsAuthenticated(true);
         showToast(`Welcome back, ${res.user?.name || identifier}!`, 'success');
@@ -515,7 +572,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res && res.token) {
         localStorage.setItem('gk_jwt_token', res.token);
         if (res.user) {
-          setCurrentUser({
+          const userObj: User = {
             id: res.user.id,
             name: res.user.name,
             firstName: res.user.firstName,
@@ -523,14 +580,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             email: res.user.email,
             phone: res.user.phone,
             avatar: res.user.avatarUrl,
-          });
+          };
+          setCurrentUser(userObj);
+          localStorage.setItem('gk_user', JSON.stringify(userObj));
         }
         if (res.organization) {
           setCurrentOrg(res.organization);
           setAllOrgs([res.organization]);
+          localStorage.setItem('gk_org', JSON.stringify(res.organization));
         }
         if (res.role) {
           setCurrentRole(res.role as UserRole);
+          localStorage.setItem('gk_role', res.role);
         }
         setIsAuthenticated(true);
         showToast(`Account created successfully! Welcome to Gharkhata.`, 'success');
@@ -545,6 +606,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     localStorage.removeItem('gk_jwt_token');
+    localStorage.removeItem('gk_user');
+    localStorage.removeItem('gk_org');
+    localStorage.removeItem('gk_role');
     setIsAuthenticated(false);
     setAllBuildings([]);
     setAllUnits([]);
@@ -703,6 +767,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addBuilding = async (buildingData: {
+    name: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    totalFloors: number;
+  }): Promise<Building | null> => {
+    try {
+      const res = await api.createBuilding(buildingData);
+      await refreshAllData();
+      showToast(`Building "${buildingData.name}" created successfully!`, 'success');
+      return res;
+    } catch (err: any) {
+      showToast(err.message || 'Failed to create building', 'error');
+      return null;
+    }
+  };
+
+  const updateBuilding = async (id: string, buildingData: Partial<Building>) => {
+    try {
+      await api.updateBuilding(id, buildingData);
+      await refreshAllData();
+      showToast(`Building updated successfully!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update building', 'error');
+    }
+  };
+
+  const deleteBuilding = async (id: string) => {
+    try {
+      await api.deleteBuilding(id);
+      await refreshAllData();
+      showToast(`Building and associated units deleted.`, 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete building', 'error');
+    }
+  };
+
   const addUnit = async (newUnitData: Omit<Unit, 'id'>) => {
     try {
       await api.createUnit(newUnitData);
@@ -710,6 +813,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast(`Unit ${newUnitData.unitNumber} added to database!`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to add unit', 'error');
+    }
+  };
+
+  const updateUnit = async (id: string, unitData: Partial<Unit>) => {
+    try {
+      await api.updateUnit(id, unitData);
+      await refreshAllData();
+      showToast(`Unit updated successfully!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update unit', 'error');
+    }
+  };
+
+  const deleteUnit = async (id: string) => {
+    try {
+      await api.deleteUnit(id);
+      await refreshAllData();
+      showToast(`Unit deleted.`, 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete unit', 'error');
     }
   };
 
@@ -840,7 +963,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         onboardTenantAndAssignUnit,
         recordPayment,
         reversePayment,
+        addBuilding,
+        updateBuilding,
+        deleteBuilding,
         addUnit,
+        updateUnit,
+        deleteUnit,
         bulkAddUnits,
         copyFloorUnits,
         sendReminderNow,

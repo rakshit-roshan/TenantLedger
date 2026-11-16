@@ -18,6 +18,7 @@ import { useApp } from '../../context/AppContext';
 
 export type NavItemKey =
   | 'dashboard'
+  | 'buildings'
   | 'tenants'
   | 'leases'
   | 'rent'
@@ -49,6 +50,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       key: 'dashboard',
       label: t.navDashboard,
       icon: <LayoutDashboard size={18} />,
+    },
+    {
+      key: 'buildings',
+      label: t.navBuildings,
+      icon: <Building2 size={18} />,
+      roles: ['OWNER', 'CO_OWNER', 'PROPERTY_MANAGER', 'PLATFORM_ADMIN'],
     },
     {
       key: 'tenants',

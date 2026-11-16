@@ -24,7 +24,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`API error [${response.status}] ${response.statusText}: ${errorText}`);
+    const error: any = new Error(`API error [${response.status}] ${response.statusText}: ${errorText}`);
+    error.status = response.status;
+    throw error;
   }
 
   // If response is empty or 204
@@ -61,6 +63,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(building),
     }),
+  updateBuilding: (id: string, building: any) =>
+    request<any>(`/buildings/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(building),
+    }),
+  deleteBuilding: (id: string) =>
+    request<void>(`/buildings/${id}`, {
+      method: 'DELETE',
+    }),
 
   // Units
   getUnits: (buildingId?: string) =>
@@ -69,6 +80,15 @@ export const api = {
     request<any>('/units', {
       method: 'POST',
       body: JSON.stringify(unit),
+    }),
+  updateUnit: (id: string, unit: any) =>
+    request<any>(`/units/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(unit),
+    }),
+  deleteUnit: (id: string) =>
+    request<void>(`/units/${id}`, {
+      method: 'DELETE',
     }),
   bulkCreateUnits: (units: any[]) =>
     request<any[]>('/units/bulk', {

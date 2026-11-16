@@ -23,6 +23,7 @@ import { LeasesAgreementsPage } from './pages/LeasesAgreementsPage';
 import { RemindersPage } from './pages/RemindersPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { OnboardingWizard } from './pages/OnboardingWizard';
+import { BuildingsUnitsPage } from './pages/BuildingsUnitsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 
@@ -83,6 +84,9 @@ export const App: React.FC = () => {
   const renderMainContent = () => {
     if (currentTab === 'onboarding') {
       return <OnboardingWizard onComplete={() => setCurrentTab('dashboard')} />;
+    }
+    if (currentTab === 'buildings') {
+      return <BuildingsUnitsPage />;
     }
     if (currentTab === 'tenants') {
       return <TenantsKYCPage onOpenAddTenant={() => handleOpenAddTenant()} />;

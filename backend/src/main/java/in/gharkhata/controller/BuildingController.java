@@ -30,6 +30,17 @@ public class BuildingController {
         return ResponseEntity.ok(buildingService.createBuilding(building));
     }
 
+    @PutMapping("/buildings/{id}")
+    public ResponseEntity<Building> updateBuilding(@PathVariable UUID id, @RequestBody Building building) {
+        return ResponseEntity.ok(buildingService.updateBuilding(id, building));
+    }
+
+    @DeleteMapping("/buildings/{id}")
+    public ResponseEntity<Void> deleteBuilding(@PathVariable UUID id) {
+        buildingService.deleteBuilding(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/units")
     public ResponseEntity<List<Unit>> getUnits(@RequestParam(required = false) UUID buildingId) {
         return ResponseEntity.ok(buildingService.getUnits(buildingId));
@@ -38,6 +49,17 @@ public class BuildingController {
     @PostMapping("/units")
     public ResponseEntity<Unit> createUnit(@RequestBody Unit unit) {
         return ResponseEntity.ok(buildingService.createUnit(unit));
+    }
+
+    @PutMapping("/units/{id}")
+    public ResponseEntity<Unit> updateUnit(@PathVariable UUID id, @RequestBody Unit unit) {
+        return ResponseEntity.ok(buildingService.updateUnit(id, unit));
+    }
+
+    @DeleteMapping("/units/{id}")
+    public ResponseEntity<Void> deleteUnit(@PathVariable UUID id) {
+        buildingService.deleteUnit(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/units/bulk")

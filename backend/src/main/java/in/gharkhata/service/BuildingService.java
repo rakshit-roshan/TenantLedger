@@ -114,4 +114,60 @@ public class BuildingService {
                 "Copied " + newUnits.size() + " units from floor " + sourceFloor + " to floor " + targetFloor, null);
         return newUnits;
     }
+
+    @Transactional
+    public Building updateBuilding(UUID id, Building updated) {
+        UUID orgId = TenantContext.getOrgId();
+        Building building = buildingRepository.findByOrganizationIdAndId(orgId, id)
+                .orElseThrow(() -> new IllegalArgumentException("Building not found: " + id));
+        if (updated.getName() != null && !updated.getName().isBlank()) building.setName(updated.getName());
+        if (updated.getAddress() != null) building.setAddress(updated.getAddress());
+        if (updated.getCity() != null) building.setCity(updated.getCity());
+        if (updated.getState() != null) building.setState(updated.getState());
+        if (updated.getPincode() != null) building.setPincode(updated.getPincode());
+        if (updated.getTotalFloors() > 0) building.setTotalFloors(updated.getTotalFloors());
+        building.setUpdatedAt(java.time.LocalDateTime.now());
+        Building saved = buildingRepository.save(building);
+        auditService.log("BUILDING_UPDATE", "Building", saved.getId().toString(), "Updated building " + saved.getName(), null);
+        return saved;
+    }
+
+    @Transactional
+    public void deleteBuilding(UUID id) {
+        UUID orgId = TenantContext.getOrgId();
+        Building building = buildingRepository.findByOrganizationIdAndId(orgId, id)
+                .orElseThrow(() -> new IllegalArgumentException("Building not found: " + id));
+        List<Unit> units = unitRepository.findAllByOrganizationIdAndBuildingId(orgId, id);
+        unitRepository.deleteAll(units);
+        buildingRepository.delete(building);
+        auditService.log("BUILDING_DELETE", "Building", id.toString(), "Deleted building " + building.getName() + " and " + units.size() + " units", null);
+    }
+
+    @Transactional
+    public Unit updateUnit(UUID id, Unit updated) {
+        UUID orgId = TenantContext.getOrgId();
+        Unit unit = unitRepository.findByOrganizationIdAndId(orgId, id)
+                .orElseThrow(() -> new IllegalArgumentException("Unit not found: " + id));
+        if (updated.getUnitNumber() != null && !updated.getUnitNumber().isBlank()) unit.setUnitNumber(updated.getUnitNumber());
+        if (updated.getFloorNumber() >= 0) unit.setFloorNumber(updated.getFloorNumber());
+        if (updated.getType() != null) unit.setType(updated.getType());
+        if (updated.getAreaSqft() > 0) unit.setAreaSqft(updated.getAreaSqft());
+        if (updated.getBaseRentPaise() >= 0) unit.setBaseRentPaise(updated.getBaseRentPaise());
+        if (updated.getMaintenancePaise() >= 0) unit.setMaintenancePaise(updated.getMaintenancePaise());
+        if (updated.getDepositPaise() >= 0) unit.setDepositPaise(updated.getDepositPaise());
+        if (updated.getStatus() != null) unit.setStatus(updated.getStatus());
+        if (updated.getPaymentStatus() != null) unit.setPaymentStatus(updated.getPaymentStatus());
+        Unit saved = unitRepository.save(unit);
+        auditService.log("UNIT_UPDATE", "Unit", saved.getId().toString(), "Updated unit " + saved.getUnitNumber(), null);
+        return saved;
+    }
+
+    @Transactional
+    public void deleteUnit(UUID id) {
+        UUID orgId = TenantContext.getOrgId();
+        Unit unit = unitRepository.findByOrganizationIdAndId(orgId, id)
+                .orElseThrow(() -> new IllegalArgumentException("Unit not found: " + id));
+        unitRepository.delete(unit);
+        auditService.log("UNIT_DELETE", "Unit", id.toString(), "Deleted unit " + unit.getUnitNumber(), null);
+    }
 }

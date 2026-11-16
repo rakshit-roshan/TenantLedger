@@ -91,7 +91,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         <button
           onClick={() => setShowMoreMenu(true)}
           className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-1 transition-colors ${
-            ['leases', 'rent', 'reminders', 'brokerage', 'tickets', 'reports', 'settings', 'audit'].includes(
+            ['buildings', 'leases', 'rent', 'reminders', 'brokerage', 'tickets', 'reports', 'settings', 'audit'].includes(
               currentTab
             )
               ? 'text-terracotta'
@@ -261,17 +261,17 @@ export const BottomBar: React.FC<BottomBarProps> = ({
 
           <button
             onClick={() => {
-              onSelectTab('onboarding');
+              onSelectTab('buildings');
               setShowMoreMenu(false);
             }}
             className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
-              currentTab === 'onboarding'
+              currentTab === 'buildings'
                 ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
                 : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
             }`}
           >
             <Building2 size={16} className="text-terracotta flex-shrink-0" />
-            <span className="truncate">{t.navOnboarding}</span>
+            <span className="truncate">{t.navBuildings}</span>
           </button>
 
           {/* 1. Dedicated Settings Option */}
