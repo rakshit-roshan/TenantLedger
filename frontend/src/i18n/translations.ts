@@ -14,7 +14,8 @@ export const translations = {
     navBrokerage: 'Broker Pipeline',
     navTickets: 'Maintenance & SLA',
     navReports: 'Financial Reports',
-    navSettings: 'Settings & Audit',
+    navSettings: 'Settings & Profile',
+    navAudit: 'Audit & Activity Log',
     navNotifications: 'Notifications',
     navOnboarding: 'Add New Building',
     
@@ -101,7 +102,8 @@ export const translations = {
     navBrokerage: 'दलाल पाइपलाइन',
     navTickets: 'रखरखाव और टिकट',
     navReports: 'वित्तीय रिपोर्ट',
-    navSettings: 'सेटिंग्स और ऑडिट',
+    navSettings: 'सेटिंग्स और प्रोफाइल',
+    navAudit: 'ऑडिट और एक्टिविटी लॉग',
     navNotifications: 'सूचनाएं',
     navOnboarding: 'नई इमारत जोड़ें',
     
@@ -188,7 +190,8 @@ export const translations = {
     navBrokerage: 'दलाली व नूतनीकरण',
     navTickets: 'दुरुस्ती आणि तक्रारी',
     navReports: 'आर्थिक अहवाल',
-    navSettings: 'सेटिंग्ज आणि ऑडिट',
+    navSettings: 'सेटिंग्ज आणि प्रोफाइल',
+    navAudit: 'ऑडिट आणि ॲक्टिव्हिटी लॉग',
     navNotifications: 'सूचना',
     navOnboarding: 'नवीन इमारत जोडा',
     

@@ -152,7 +152,7 @@ export const App: React.FC = () => {
 
       {/* Main Body: Only center content scrolls! */}
       <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
-        <TopBar />
+        <TopBar onNavigateToTab={handleTabChange} />
 
         {/* Scrollable Center Content Container */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-10 py-6 sm:py-8 pb-28 md:pb-12">

@@ -1,5 +1,21 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Building2, Users, MoreHorizontal, Plus, Receipt, Send, PlusCircle } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  MoreHorizontal,
+  Plus,
+  Receipt,
+  Send,
+  PlusCircle,
+  FileCheck2,
+  BellRing,
+  Briefcase,
+  Wrench,
+  BarChart3,
+  Settings,
+  History,
+} from 'lucide-react';
 import { NavItemKey } from './Sidebar';
 import { useApp } from '../../context/AppContext';
 import { Modal } from '../ui/Modal';
@@ -75,7 +91,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         <button
           onClick={() => setShowMoreMenu(true)}
           className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] gap-1 transition-colors ${
-            ['leases', 'rent', 'reminders', 'brokerage', 'tickets', 'reports', 'settings'].includes(
+            ['leases', 'rent', 'reminders', 'brokerage', 'tickets', 'reports', 'settings', 'audit'].includes(
               currentTab
             )
               ? 'text-terracotta'
@@ -150,89 +166,145 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         isOpen={showMoreMenu}
         onClose={() => setShowMoreMenu(false)}
         title="Gharkhata Navigation"
-        subtitle="All modules and settings"
+        subtitle="All modules, profile settings, and audit logs"
       >
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+        <div className="grid grid-cols-2 gap-2.5 text-xs">
+          <button
             onClick={() => {
               onSelectTab('leases');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'leases'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navLeases}
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+            <FileCheck2 size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navLeases}</span>
+          </button>
+
+          <button
             onClick={() => {
               onSelectTab('rent');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'rent'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navRent}
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+            <Receipt size={16} className="text-paid flex-shrink-0" />
+            <span className="truncate">{t.navRent}</span>
+          </button>
+
+          <button
             onClick={() => {
               onSelectTab('reminders');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'reminders'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navReminders}
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+            <BellRing size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navReminders}</span>
+          </button>
+
+          <button
             onClick={() => {
               onSelectTab('brokerage');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'brokerage'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navBrokerage}
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+            <Briefcase size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navBrokerage}</span>
+          </button>
+
+          <button
             onClick={() => {
               onSelectTab('tickets');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'tickets'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navTickets}
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+            <Wrench size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navTickets}</span>
+          </button>
+
+          <button
             onClick={() => {
               onSelectTab('reports');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'reports'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navReports}
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+            <BarChart3 size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navReports}</span>
+          </button>
+
+          <button
             onClick={() => {
               onSelectTab('onboarding');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'onboarding'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navOnboarding}
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start h-auto py-3 px-3 text-left"
+            <Building2 size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navOnboarding}</span>
+          </button>
+
+          {/* 1. Dedicated Settings Option */}
+          <button
             onClick={() => {
               onSelectTab('settings');
               setShowMoreMenu(false);
             }}
+            className={`flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'settings'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
           >
-            {t.navSettings}
-          </Button>
+            <Settings size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navSettings}</span>
+          </button>
+
+          {/* 2. Dedicated Audit Log Option */}
+          <button
+            onClick={() => {
+              onSelectTab('audit');
+              setShowMoreMenu(false);
+            }}
+            className={`col-span-2 flex items-center gap-2 p-3 rounded-[10px] border text-left transition-colors ${
+              currentTab === 'audit'
+                ? 'bg-terracotta/10 border-terracotta text-terracotta font-bold'
+                : 'bg-ground border-line text-ink hover:bg-ground/70 font-semibold'
+            }`}
+          >
+            <History size={16} className="text-terracotta flex-shrink-0" />
+            <span className="truncate">{t.navAudit}</span>
+          </button>
         </div>
       </Modal>
     </>

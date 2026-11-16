@@ -94,13 +94,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     },
     {
       key: 'audit',
-      label: 'Audit & Activity Log',
+      label: t.navAudit,
       icon: <History size={18} />,
       roles: ['OWNER', 'CO_OWNER', 'ACCOUNTANT', 'PLATFORM_ADMIN'],
     },
     {
       key: 'settings',
-      label: 'Settings & Profile',
+      label: t.navSettings,
       icon: <Settings size={18} />,
       roles: ['OWNER', 'CO_OWNER', 'PLATFORM_ADMIN'],
     },

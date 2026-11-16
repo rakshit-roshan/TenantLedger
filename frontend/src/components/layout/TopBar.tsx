@@ -7,21 +7,26 @@ import {
   User,
   LogOut,
   ChevronDown,
+  Settings,
+  History,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Modal } from '../ui/Modal';
 import { formatKolkataDate } from '../../utils/formatters';
+import { NavItemKey } from './Sidebar';
 
 interface TopBarProps {
   onSearch?: (term: string) => void;
   onOpenAddTenantWizard?: () => void;
   onOpenAuthModal?: () => void;
+  onNavigateToTab?: (tab: NavItemKey) => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   onSearch,
   onOpenAddTenantWizard,
   onOpenAuthModal,
+  onNavigateToTab,
 }) => {
   const {
     t,
@@ -183,6 +188,32 @@ export const TopBar: React.FC<TopBarProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Navigation links to Settings & Audit */}
+              {onNavigateToTab && (
+                <div className="px-2 py-1.5 border-b border-line space-y-0.5">
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      onNavigateToTab('settings');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-xs text-ink hover:bg-ground font-medium transition-colors text-left"
+                  >
+                    <Settings size={14} className="text-terracotta" />
+                    <span>{t.navSettings}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      onNavigateToTab('audit');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-xs text-ink hover:bg-ground font-medium transition-colors text-left"
+                  >
+                    <History size={14} className="text-terracotta" />
+                    <span>{t.navAudit}</span>
+                  </button>
+                </div>
+              )}
 
               {/* Sign out */}
               <div className="px-2 pt-2">
