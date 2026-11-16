@@ -5,9 +5,12 @@ import in.gharkhata.model.Building;
 import in.gharkhata.model.Unit;
 import in.gharkhata.repository.BuildingRepository;
 import in.gharkhata.repository.UnitRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -27,16 +30,43 @@ public class BuildingService {
 
     public List<Building> getAllBuildings() {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            return List.of();
+        }
         return buildingRepository.findAllByOrganizationId(orgId);
     }
 
     @Transactional
     public Building createBuilding(Building building) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required. Please sign in to create buildings.");
+        }
         building.setOrganizationId(orgId);
         if (building.getId() == null) {
             building.setId(UUID.randomUUID());
         }
+        if (building.getName() == null || building.getName().isBlank()) {
+            throw new IllegalArgumentException("Building name is required");
+        }
+        if (building.getAddress() == null || building.getAddress().isBlank()) {
+            building.setAddress("Main Road");
+        }
+        if (building.getCity() == null || building.getCity().isBlank()) {
+            building.setCity("Pune");
+        }
+        if (building.getState() == null || building.getState().isBlank()) {
+            building.setState("Maharashtra");
+        }
+        if (building.getPincode() == null || building.getPincode().isBlank()) {
+            building.setPincode("411001");
+        }
+        if (building.getTotalFloors() <= 0) {
+            building.setTotalFloors(1);
+        }
+        building.setCreatedAt(LocalDateTime.now());
+        building.setUpdatedAt(LocalDateTime.now());
+
         Building saved = buildingRepository.save(building);
         auditService.log("BUILDING_CREATE", "Building", saved.getId().toString(), "Created building " + saved.getName(), null);
         return saved;
@@ -44,6 +74,9 @@ public class BuildingService {
 
     public List<Unit> getUnits(UUID buildingId) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            return List.of();
+        }
         if (buildingId != null) {
             return unitRepository.findAllByOrganizationIdAndBuildingId(orgId, buildingId);
         }
@@ -53,10 +86,31 @@ public class BuildingService {
     @Transactional
     public Unit createUnit(Unit unit) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required. Please sign in to create units.");
+        }
+        if (unit.getBuildingId() == null) {
+            throw new IllegalArgumentException("Building ID is required for a unit");
+        }
+        if (unit.getUnitNumber() == null || unit.getUnitNumber().isBlank()) {
+            throw new IllegalArgumentException("Unit number is required");
+        }
         unit.setOrganizationId(orgId);
         if (unit.getId() == null) {
             unit.setId(UUID.randomUUID());
         }
+        if (unit.getType() == null || unit.getType().isBlank()) {
+            unit.setType("1BHK");
+        }
+        if (unit.getStatus() == null || unit.getStatus().isBlank()) {
+            unit.setStatus("VACANT");
+        }
+        if (unit.getPaymentStatus() == null || unit.getPaymentStatus().isBlank()) {
+            unit.setPaymentStatus("VACANT");
+        }
+        unit.setCreatedAt(LocalDateTime.now());
+        unit.setUpdatedAt(LocalDateTime.now());
+
         Unit saved = unitRepository.save(unit);
         auditService.log("UNIT_CREATE", "Unit", saved.getId().toString(), "Created unit " + saved.getUnitNumber(), null);
         return saved;
@@ -118,6 +172,9 @@ public class BuildingService {
     @Transactional
     public Building updateBuilding(UUID id, Building updated) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required.");
+        }
         Building building = buildingRepository.findByOrganizationIdAndId(orgId, id)
                 .orElseThrow(() -> new IllegalArgumentException("Building not found: " + id));
         if (updated.getName() != null && !updated.getName().isBlank()) building.setName(updated.getName());
@@ -126,7 +183,7 @@ public class BuildingService {
         if (updated.getState() != null) building.setState(updated.getState());
         if (updated.getPincode() != null) building.setPincode(updated.getPincode());
         if (updated.getTotalFloors() > 0) building.setTotalFloors(updated.getTotalFloors());
-        building.setUpdatedAt(java.time.LocalDateTime.now());
+        building.setUpdatedAt(LocalDateTime.now());
         Building saved = buildingRepository.save(building);
         auditService.log("BUILDING_UPDATE", "Building", saved.getId().toString(), "Updated building " + saved.getName(), null);
         return saved;
@@ -135,6 +192,9 @@ public class BuildingService {
     @Transactional
     public void deleteBuilding(UUID id) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required.");
+        }
         Building building = buildingRepository.findByOrganizationIdAndId(orgId, id)
                 .orElseThrow(() -> new IllegalArgumentException("Building not found: " + id));
         List<Unit> units = unitRepository.findAllByOrganizationIdAndBuildingId(orgId, id);
@@ -146,6 +206,9 @@ public class BuildingService {
     @Transactional
     public Unit updateUnit(UUID id, Unit updated) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required.");
+        }
         Unit unit = unitRepository.findByOrganizationIdAndId(orgId, id)
                 .orElseThrow(() -> new IllegalArgumentException("Unit not found: " + id));
         if (updated.getUnitNumber() != null && !updated.getUnitNumber().isBlank()) unit.setUnitNumber(updated.getUnitNumber());
@@ -157,6 +220,7 @@ public class BuildingService {
         if (updated.getDepositPaise() >= 0) unit.setDepositPaise(updated.getDepositPaise());
         if (updated.getStatus() != null) unit.setStatus(updated.getStatus());
         if (updated.getPaymentStatus() != null) unit.setPaymentStatus(updated.getPaymentStatus());
+        unit.setUpdatedAt(LocalDateTime.now());
         Unit saved = unitRepository.save(unit);
         auditService.log("UNIT_UPDATE", "Unit", saved.getId().toString(), "Updated unit " + saved.getUnitNumber(), null);
         return saved;
@@ -165,6 +229,9 @@ public class BuildingService {
     @Transactional
     public void deleteUnit(UUID id) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required.");
+        }
         Unit unit = unitRepository.findByOrganizationIdAndId(orgId, id)
                 .orElseThrow(() -> new IllegalArgumentException("Unit not found: " + id));
         unitRepository.delete(unit);

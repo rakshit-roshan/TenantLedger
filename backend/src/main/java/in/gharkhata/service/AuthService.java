@@ -184,7 +184,9 @@ public class AuthService {
         String role = TenantContext.getRole() != null ? TenantContext.getRole() : "OWNER";
 
         if (userId == null || orgId == null) {
-            throw new IllegalArgumentException("No active authenticated session");
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED, "No active authenticated session"
+            );
         }
 
         User user = userRepository.findById(userId)

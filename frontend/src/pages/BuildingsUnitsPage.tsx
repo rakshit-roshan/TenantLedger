@@ -101,20 +101,20 @@ export const BuildingsUnitsPage: React.FC = () => {
       await updateBuilding(editingBuilding.id, {
         name: bName.trim(),
         totalFloors: bFloors,
-        address: bAddress.trim(),
-        city: bCity.trim(),
-        state: bState.trim(),
-        pincode: bPincode.trim(),
+        address: bAddress.trim() || 'Main Road',
+        city: bCity.trim() || 'Pune',
+        state: bState.trim() || 'Maharashtra',
+        pincode: bPincode.trim() || '411001',
       });
       setEditingBuilding(null);
     } else {
       const created = await addBuilding({
         name: bName.trim(),
         totalFloors: bFloors,
-        address: bAddress.trim(),
-        city: bCity.trim(),
-        state: bState.trim(),
-        pincode: bPincode.trim(),
+        address: bAddress.trim() || 'Main Road',
+        city: bCity.trim() || 'Pune',
+        state: bState.trim() || 'Maharashtra',
+        pincode: bPincode.trim() || '411001',
       });
       if (created) {
         setSelectedBuildingId(created.id);

@@ -11,6 +11,14 @@ function getAuthHeader(): Record<string, string> {
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
+  const token = localStorage.getItem('gk_jwt_token');
+  const isAuthEndpoint = endpoint === '/auth/login' || endpoint === '/auth/register';
+  if (!token && !isAuthEndpoint) {
+    const error: any = new Error('You are not signed in or your session has expired. Please sign in to continue.');
+    error.status = 401;
+    throw error;
+  }
+
   const headers = {
     'Content-Type': 'application/json',
     ...getAuthHeader(),
@@ -23,9 +31,23 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    const error: any = new Error(`API error [${response.status}] ${response.statusText}: ${errorText}`);
+    const rawText = await response.text();
+    let displayMessage = `API error [${response.status}] ${response.statusText}`;
+    try {
+      const parsed = JSON.parse(rawText);
+      if (parsed.message) {
+        displayMessage = parsed.message;
+      } else if (parsed.error) {
+        displayMessage = parsed.error;
+      }
+    } catch {
+      if (rawText && rawText.length < 200) {
+        displayMessage = rawText;
+      }
+    }
+    const error: any = new Error(displayMessage);
     error.status = response.status;
+    error.raw = rawText;
     throw error;
   }
 

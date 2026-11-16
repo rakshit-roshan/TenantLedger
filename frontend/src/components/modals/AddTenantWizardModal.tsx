@@ -46,6 +46,9 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
   const [emergencyPhone, setEmergencyPhone] = useState('+91 ');
   const [emergencyRelation, setEmergencyRelation] = useState('Parent');
 
+  // Form Validation State
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   // Step 2: Unit Assignment
   const vacantUnits = units.filter((u) => u.status === 'VACANT' || u.id === preselectedUnitId);
   const [selectedUnitId, setSelectedUnitId] = useState<string>(
@@ -100,26 +103,131 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
     }
   }, [vacantUnits, selectedUnitId]);
 
+  const cleanDigits = (val: string) => {
+    let d = val.replace(/\D/g, '');
+    if (d.startsWith('91') && d.length > 10) {
+      d = d.slice(2);
+    }
+    return d;
+  };
+
+  const isIndianMobile = (val: string) => {
+    const d = cleanDigits(val);
+    return d.length === 10 && /^[6-9]\d{9}$/.test(d);
+  };
+
+  const isValidEmail = (val: string) => {
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val.trim());
+  };
+
+  const isValidPan = (val: string) => {
+    return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val.trim().toUpperCase());
+  };
+
+  const isValidAadhaar = (val: string) => {
+    const d = val.replace(/\D/g, '');
+    return d.length === 12;
+  };
+
+  const validateStep1 = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!name.trim()) {
+      errs.name = 'Tenant full name is required';
+    } else if (name.trim().length < 2) {
+      errs.name = 'Full name must have at least 2 characters';
+    }
+
+    const tDigits = cleanDigits(phone);
+    if (!phone.trim() || phone.trim() === '+91') {
+      errs.phone = 'Mobile number is required';
+    } else if (!isIndianMobile(phone)) {
+      errs.phone = 'Enter a valid 10-digit mobile number (e.g. 98220 12345)';
+    }
+
+    if (!email.trim()) {
+      errs.email = 'Email address is required for automated rent notices';
+    } else if (!isValidEmail(email)) {
+      errs.email = 'Enter a valid email address (e.g. tenant@example.com)';
+    }
+
+    const emDigits = cleanDigits(emergencyPhone);
+    if (emergencyPhone.trim() && emergencyPhone.trim() !== '+91' && emDigits.length > 0) {
+      if (!isIndianMobile(emergencyPhone)) {
+        errs.emergencyPhone = 'Emergency phone must be a valid 10-digit mobile number';
+      } else if (emDigits === tDigits) {
+        errs.emergencyPhone = 'Emergency phone cannot be the same as tenant mobile number';
+      }
+    }
+
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      showToast(Object.values(errs)[0], 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep2 = (): boolean => {
+    if (!selectedUnitId) {
+      showToast('Please select or create an available unit to assign this tenant', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep3 = (): boolean => {
+    if (rentPaise <= 0) {
+      showToast('Monthly rent must be greater than ₹0', 'error');
+      return false;
+    }
+    if (new Date(endDate) <= new Date(startDate)) {
+      showToast('Agreement end date must be after the lease start date', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep4 = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (panNumber.trim() && !isValidPan(panNumber)) {
+      errs.pan = 'Invalid PAN format. Must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)';
+    }
+    if (aadhaarNumber.trim() && !isValidAadhaar(aadhaarNumber)) {
+      errs.aadhaar = 'Aadhaar number must be exactly 12 digits';
+    }
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      showToast(Object.values(errs)[0], 'error');
+      return false;
+    }
+    return true;
+  };
+
   const handleCreateInlineBuilding = async () => {
     if (!inlineBName.trim()) {
       showToast('Building name is required', 'error');
       return;
     }
     setIsCreatingBuilding(true);
-    const created = await addBuilding({
-      name: inlineBName.trim(),
-      totalFloors: inlineBFloors,
-      address: currentOrg.address || 'Main Road',
-      city: currentOrg.city || 'Pune',
-      state: currentOrg.state || 'Maharashtra',
-      pincode: currentOrg.pincode || '411005',
-    });
-    setIsCreatingBuilding(false);
-    if (created) {
-      setInlineBuildingId(created.id);
-      setInlineBName('');
-      setShowInlineAddBuilding(false);
-      setShowInlineAddUnit(true);
+    try {
+      const created = await addBuilding({
+        name: inlineBName.trim(),
+        totalFloors: inlineBFloors || 1,
+        address: currentOrg?.address || 'Main Road',
+        city: currentOrg?.city || 'Pune',
+        state: currentOrg?.state || 'Maharashtra',
+        pincode: currentOrg?.pincode || '411001',
+      });
+      if (created) {
+        setInlineBuildingId(created.id);
+        setInlineBName('');
+        setShowInlineAddBuilding(false);
+        setShowInlineAddUnit(true);
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to create building', 'error');
+    } finally {
+      setIsCreatingBuilding(false);
     }
   };
 
@@ -134,26 +242,31 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
       return;
     }
     setIsCreatingUnit(true);
-    await addUnit({
-      organizationId: currentOrg.id,
-      buildingId: targetBuilding.id,
-      buildingName: targetBuilding.name,
-      floorId: `floor-${inlineUFloor}`,
-      floorNumber: inlineUFloor,
-      unitNumber: inlineUNumber.trim(),
-      type: inlineUType,
-      areaSqft: 600,
-      baseRentPaise: inlineURent * 100,
-      maintenancePaise: 250000,
-      depositPaise: inlineUDeposit * 100,
-      status: 'VACANT',
-      paymentStatus: 'VACANT',
-    });
-    setIsCreatingUnit(false);
-    setShowInlineAddUnit(false);
-    setRentPaise(inlineURent * 100);
-    setDepositPaise(inlineUDeposit * 100);
-    setInlineUNumber('');
+    try {
+      await addUnit({
+        organizationId: currentOrg.id,
+        buildingId: targetBuilding.id,
+        buildingName: targetBuilding.name,
+        floorId: `floor-${inlineUFloor}`,
+        floorNumber: inlineUFloor,
+        unitNumber: inlineUNumber.trim(),
+        type: inlineUType,
+        areaSqft: 600,
+        baseRentPaise: inlineURent * 100,
+        maintenancePaise: 250000,
+        depositPaise: inlineUDeposit * 100,
+        status: 'VACANT',
+        paymentStatus: 'VACANT',
+      });
+      setShowInlineAddUnit(false);
+      setRentPaise(inlineURent * 100);
+      setDepositPaise(inlineUDeposit * 100);
+      setInlineUNumber('');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to create unit', 'error');
+    } finally {
+      setIsCreatingUnit(false);
+    }
   };
 
   useEffect(() => {
@@ -298,10 +411,20 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors((prev) => { const n = { ...prev }; delete n.name; return n; });
+                }}
                 placeholder="e.g. Ramesh Chandra Sharma"
-                className="w-full h-[44px] px-3 rounded-[10px] border border-line bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                className={`w-full h-[44px] px-3 rounded-[10px] border bg-surface text-ink text-sm focus:outline-none focus:ring-2 ${
+                  errors.name ? 'border-red-500 ring-1 ring-red-400 bg-red-50/10' : 'border-line focus:ring-terracotta'
+                }`}
               />
+              {errors.name && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1 font-medium">
+                  <AlertCircle size={12} /> {errors.name}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -313,23 +436,44 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
                   type="text"
                   required
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    if (errors.phone) setErrors((prev) => { const n = { ...prev }; delete n.phone; return n; });
+                  }}
                   placeholder="+91 98220 12345"
-                  className="w-full h-[44px] px-3 rounded-[10px] border border-line bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  className={`w-full h-[44px] px-3 rounded-[10px] border bg-surface text-ink text-sm focus:outline-none focus:ring-2 ${
+                    errors.phone ? 'border-red-500 ring-1 ring-red-400 bg-red-50/10' : 'border-line focus:ring-terracotta'
+                  }`}
                 />
+                {errors.phone && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1 font-medium">
+                    <AlertCircle size={12} /> {errors.phone}
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1.5">
-                  Email Address
+                  Email Address <span className="text-terracotta">*</span>
                 </label>
                 <input
                   type="email"
+                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors((prev) => { const n = { ...prev }; delete n.email; return n; });
+                  }}
                   placeholder="ramesh.sharma@example.com"
-                  className="w-full h-[44px] px-3 rounded-[10px] border border-line bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  className={`w-full h-[44px] px-3 rounded-[10px] border bg-surface text-ink text-sm focus:outline-none focus:ring-2 ${
+                    errors.email ? 'border-red-500 ring-1 ring-red-400 bg-red-50/10' : 'border-line focus:ring-terracotta'
+                  }`}
                 />
+                {errors.email && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1 font-medium">
+                    <AlertCircle size={12} /> {errors.email}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -364,7 +508,7 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
             {/* Emergency Contact */}
             <div className="pt-2 border-t border-line/60">
               <span className="text-xs font-bold text-muted-text uppercase block mb-2">
-                Emergency Contact
+                Emergency Contact (Optional)
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <input
@@ -374,13 +518,25 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
                   placeholder="Contact Name"
                   className="h-[42px] px-3 rounded-[10px] border border-line bg-surface text-xs text-ink"
                 />
-                <input
-                  type="text"
-                  value={emergencyPhone}
-                  onChange={(e) => setEmergencyPhone(e.target.value)}
-                  placeholder="Phone (+91)"
-                  className="h-[42px] px-3 rounded-[10px] border border-line bg-surface text-xs text-ink"
-                />
+                <div>
+                  <input
+                    type="text"
+                    value={emergencyPhone}
+                    onChange={(e) => {
+                      setEmergencyPhone(e.target.value);
+                      if (errors.emergencyPhone) setErrors((prev) => { const n = { ...prev }; delete n.emergencyPhone; return n; });
+                    }}
+                    placeholder="Phone (+91)"
+                    className={`h-[42px] w-full px-3 rounded-[10px] border bg-surface text-xs text-ink ${
+                      errors.emergencyPhone ? 'border-red-500 ring-1 ring-red-400' : 'border-line'
+                    }`}
+                  />
+                  {errors.emergencyPhone && (
+                    <p className="text-[11px] text-red-600 mt-0.5 flex items-center gap-1 font-medium">
+                      <AlertCircle size={11} /> {errors.emergencyPhone}
+                    </p>
+                  )}
+                </div>
                 <select
                   value={emergencyRelation}
                   onChange={(e) => setEmergencyRelation(e.target.value)}
@@ -782,30 +938,50 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1.5">
-                  Aadhaar Card Number
+                  Aadhaar Card Number (12 Digits)
                 </label>
                 <input
                   type="text"
                   maxLength={14}
                   value={aadhaarNumber}
-                  onChange={(e) => setAadhaarNumber(e.target.value)}
+                  onChange={(e) => {
+                    setAadhaarNumber(e.target.value);
+                    if (errors.aadhaar) setErrors((prev) => { const n = { ...prev }; delete n.aadhaar; return n; });
+                  }}
                   placeholder="e.g. 4590 1289 4921"
-                  className="w-full h-[44px] px-3 rounded-[10px] border border-line bg-surface text-ink text-sm font-mono focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  className={`w-full h-[44px] px-3 rounded-[10px] border bg-surface text-ink text-sm font-mono focus:outline-none focus:ring-2 ${
+                    errors.aadhaar ? 'border-red-500 ring-1 ring-red-400 bg-red-50/10' : 'border-line focus:ring-terracotta'
+                  }`}
                 />
+                {errors.aadhaar && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1 font-medium">
+                    <AlertCircle size={12} /> {errors.aadhaar}
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-muted-text uppercase tracking-wider mb-1.5">
-                  PAN Card Number
+                  PAN Card Number (10 Characters)
                 </label>
                 <input
                   type="text"
                   maxLength={10}
                   value={panNumber}
-                  onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    setPanNumber(e.target.value.toUpperCase());
+                    if (errors.pan) setErrors((prev) => { const n = { ...prev }; delete n.pan; return n; });
+                  }}
                   placeholder="e.g. AAAPS4419P"
-                  className="w-full h-[44px] px-3 rounded-[10px] border border-line bg-surface text-ink text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-terracotta"
+                  className={`w-full h-[44px] px-3 rounded-[10px] border bg-surface text-ink text-sm font-mono uppercase focus:outline-none focus:ring-2 ${
+                    errors.pan ? 'border-red-500 ring-1 ring-red-400 bg-red-50/10' : 'border-line focus:ring-terracotta'
+                  }`}
                 />
+                {errors.pan && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1 font-medium">
+                    <AlertCircle size={12} /> {errors.pan}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -881,7 +1057,10 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
           {step > 1 ? (
             <Button
               variant="secondary"
-              onClick={() => setStep((s) => s - 1)}
+              onClick={() => {
+                setErrors({});
+                setStep((s) => s - 1);
+              }}
               icon={<ArrowLeft size={16} />}
             >
               Back
@@ -896,10 +1075,10 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
             <Button
               variant="primary"
               onClick={() => {
-                if (step === 1 && !name.trim()) {
-                  showToast('Please enter the tenant name', 'error');
-                  return;
-                }
+                if (step === 1 && !validateStep1()) return;
+                if (step === 2 && !validateStep2()) return;
+                if (step === 3 && !validateStep3()) return;
+                setErrors({});
                 setStep((s) => s + 1);
               }}
               icon={<ArrowRight size={16} />}
@@ -910,7 +1089,10 @@ export const AddTenantWizardModal: React.FC<AddTenantWizardModalProps> = ({
             <Button
               variant="primary"
               disabled={isSubmitting}
-              onClick={handleFinish}
+              onClick={() => {
+                if (!validateStep4()) return;
+                handleFinish();
+              }}
               icon={<CheckCircle2 size={16} />}
             >
               {isSubmitting ? 'Saving to Database...' : 'Confirm & Assign Unit'}

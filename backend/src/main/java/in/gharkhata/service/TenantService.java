@@ -39,6 +39,11 @@ public class TenantService {
     @Transactional
     public Tenant onboardTenant(OnboardTenantRequest req) {
         UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required to onboard tenants."
+            );
+        }
 
         Unit unit = unitRepository.findByOrganizationIdAndId(orgId, req.unitId)
                 .orElseThrow(() -> new IllegalArgumentException("Unit not found"));
