@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Button';
-import { Mail, Lock, User, Phone, LogIn, UserPlus, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Phone, LogIn, UserPlus, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export const AuthPage: React.FC<{ onSuccessfulAuth?: () => void }> = ({ onSuccessfulAuth }) => {
   const { loginWithApi, registerWithApi, showToast } = useApp();
@@ -434,13 +434,6 @@ export const AuthPage: React.FC<{ onSuccessfulAuth?: () => void }> = ({ onSucces
                 >
                   {isSubmitting ? 'Creating Owner Account...' : 'Register as Property Owner'}
                 </Button>
-              </div>
-
-              <div className="p-2.5 rounded-[10px] bg-ground border border-line text-[11px] text-muted-text flex items-start gap-2">
-                <ShieldCheck size={16} className="text-terracotta shrink-0 mt-0.5" />
-                <span>
-                  Each owner receives an isolated tenant environment. Your buildings, units, tenants, and rental ledgers are strictly private and isolated.
-                </span>
               </div>
             </form>
           )}
